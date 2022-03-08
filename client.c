@@ -41,7 +41,7 @@ int main()
                "%lld.\n",
                i, sz);
         sz = write(fd, buf, 1);
-        fprintf(fp, "%lld\n", sz);
+        fprintf(fp, "%d %lld\n", i, sz);
     }
 
     /*

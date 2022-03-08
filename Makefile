@@ -19,6 +19,7 @@ $(GIT_HOOKS):
 clean:
 	$(MAKE) -C $(KDIR) M=$(PWD) clean
 	$(RM) client out
+	rm *.png
 load:
 	sudo insmod $(TARGET_MODULE).ko
 unload:
@@ -39,3 +40,7 @@ check: all
 	$(MAKE) unload
 	#@diff -u out scripts/expected.txt && $(call pass)
 	@scripts/verify.py
+
+plot:
+	gnuplot time.gp
+	eog time.png
