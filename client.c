@@ -40,8 +40,11 @@ int main()
                " at offset %d, returned the sequence "
                "%lld.\n",
                i, sz);
-        sz = write(fd, buf, 1);
-        fprintf(fp, "%d %lld\n", i, sz);
+        lseek(fd, 1, SEEK_SET);
+        long long sz1 = write(fd, buf, 1);
+        lseek(fd, 2, SEEK_SET);
+        long long sz2 = write(fd, buf, 1);
+        fprintf(fp, "%d %lld %lld\n", i, sz1, sz2);
     }
 
     /*
