@@ -44,7 +44,9 @@ int main()
         long long sz1 = write(fd, buf, 1);
         lseek(fd, 2, SEEK_SET);
         long long sz2 = write(fd, buf, 1);
-        fprintf(fp, "%d %lld %lld\n", i, sz1, sz2);
+        lseek(fd, 3, SEEK_SET);
+        long long sz3 = write(fd, buf, 1);
+        fprintf(fp, "%d %lld %lld %lld\n", i, sz1, sz2, sz3);
     }
 
     /*

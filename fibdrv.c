@@ -23,7 +23,7 @@ static dev_t fib_dev = 0;
 static struct cdev *fib_cdev;
 static struct class *fib_class;
 static DEFINE_MUTEX(fib_mutex);
-static ssize_t time, time2;
+static ssize_t time, time2, time3;
 
 static long long fib_sequence(long long k)
 {
@@ -64,6 +64,30 @@ static long long fib_fast_exp(long long k)
     return f[1];
 }
 
+long long fib_fast_doubling(int n)
+{
+    if (!n) {
+        return 0;
+    }
+    long long a = 0;
+    long long b = 1;
+    long long m = 1 << (63 - __builtin_clz(n));
+    while (m) {
+        long long t1, t2;
+        t1 = a * (2 * b - a);
+        t2 = b * b + a * a;
+        a = t1;
+        b = t2;
+        if (n & m) {
+            t1 = a + b;
+            a = b;
+            b = t1;
+        }
+        m >>= 1;
+    }
+    return a;
+}
+
 static int fib_open(struct inode *inode, struct file *file)
 {
     if (!mutex_trylock(&fib_mutex)) {
@@ -91,8 +115,12 @@ static ssize_t fib_read(struct file *file,
     ktime_t kt2 = ktime_get();
     fib_fast_exp(*offset);
     kt2 = ktime_sub(ktime_get(), kt2);
+    ktime_t kt3 = ktime_get();
+    fib_fast_doubling(*offset);
+    kt3 = ktime_sub(ktime_get(), kt3);
     time = ktime_to_ns(kt);
     time2 = ktime_to_ns(kt2);
+    time3 = ktime_to_ns(kt3);
     return res;
 }
 
@@ -105,6 +133,8 @@ static ssize_t fib_write(struct file *file,
     switch (*offset) {
     case 2:
         return time2;
+    case 3:
+        return time3;
     default:
         return time;
     }
