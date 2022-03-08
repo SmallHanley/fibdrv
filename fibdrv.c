@@ -27,7 +27,7 @@ static DEFINE_MUTEX(fib_mutex);
 static long long fib_sequence(long long k)
 {
     /* FIXME: C99 variable-length array (VLA) is not allowed in Linux kernel. */
-    long long f[k + 2];
+    long long f[120];
 
     f[0] = 0;
     f[1] = 1;
@@ -60,7 +60,11 @@ static ssize_t fib_read(struct file *file,
                         size_t size,
                         loff_t *offset)
 {
-    return (ssize_t) fib_sequence(*offset);
+    ktime_t kt = ktime_get();
+    ssize_t res = (ssize_t) fib_sequence(*offset);
+    kt = ktime_sub(ktime_get(), kt);
+    printk(KERN_INFO "%lld %lld", *offset, ktime_to_ns(kt));
+    return res;
 }
 
 /* write operation is skipped */
