@@ -31,4 +31,5 @@ client
 out
 
 # Gnuplot
-time*
+time/
+*.png

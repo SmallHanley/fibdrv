@@ -19,7 +19,7 @@ $(GIT_HOOKS):
 clean:
 	$(MAKE) -C $(KDIR) M=$(PWD) clean
 	$(RM) client out
-	rm *.png time
+	rm *.png time/*
 load:
 	sudo insmod $(TARGET_MODULE).ko
 unload:
@@ -41,6 +41,18 @@ check: all
 	#@diff -u out scripts/expected.txt && $(call pass)
 	@scripts/verify.py
 
-plot:
-	gnuplot time.gp
+LOOP = 10
+PREFIX = time/
+POSTFIX = .time
+plot: all
+	$(MAKE) unload
+	$(MAKE) load
+	for ((i=1; i <= ${LOOP}; ++i)) do \
+		sudo ./client > out; \
+		sudo chown $$(whoami) time/time; \
+		mv time/time ${PREFIX}$$i${POSTFIX}; \
+	done
+	$(MAKE) unload
+	@scripts/time.py
+	gnuplot scripts/time.gp
 	eog time.png

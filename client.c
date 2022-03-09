@@ -19,7 +19,7 @@ int main()
         exit(1);
     }
 
-    FILE *fp = fopen("time", "w");
+    FILE *fp = fopen("time/time", "w");
     if (!fp) {
         perror("Failed to open time file");
         exit(1);
