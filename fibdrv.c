@@ -6,6 +6,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
+#include <linux/sched.h>
 
 MODULE_LICENSE("Dual MIT/GPL");
 MODULE_AUTHOR("National Cheng Kung University, Taiwan");
@@ -131,12 +132,14 @@ static ssize_t fib_write(struct file *file,
                          loff_t *offset)
 {
     switch (*offset) {
+    case 1:
+        return time;
     case 2:
         return time2;
     case 3:
         return time3;
     default:
-        return time;
+        return current->pid;
     }
 }
 

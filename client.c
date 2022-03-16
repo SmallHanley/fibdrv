@@ -1,4 +1,7 @@
+#define _GNU_SOURCE /* See feature_test_macros(7) */
+#include <errno.h>
 #include <fcntl.h>
+#include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +34,16 @@ int main()
         printf("Writing to " FIB_DEV ", returned the sequence %lld\n", sz);
     }
     */
+
+    lseek(fd, 0, SEEK_SET);
+    long long pid = write(fd, buf, 1);
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(0, &cpuset);
+    if (sched_setaffinity(pid, sizeof(cpuset), &cpuset)) {
+        perror(strerror(errno));
+        exit(1);
+    }
 
     for (int i = 0; i <= offset; i++) {
         long long sz;
