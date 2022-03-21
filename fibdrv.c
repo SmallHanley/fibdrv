@@ -112,7 +112,7 @@ static ssize_t fib_read(struct file *file,
                         loff_t *offset)
 {
     ktime_t kt = ktime_get();
-    ssize_t res1 = (ssize_t) fib_sequence(*offset);
+    ssize_t res1 = fib_sequence(*offset);
     kt = ktime_sub(ktime_get(), kt);
     ktime_t kt2 = ktime_get();
     ssize_t res2 = fib_fast_exp(*offset);

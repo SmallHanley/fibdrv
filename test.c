@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define BN_LENGTH 1000
+#define BN_LENGTH 11
 
 typedef struct {
     uint64_t val[BN_LENGTH];
@@ -64,6 +64,18 @@ static void bn_sub(bn_t *a, bn_t *b, bn_t *res)
     }
 }
 
+static void bn_mul(bn_t a, bn_t b, bn_t *res)
+{
+    bn_init(res);
+    for (int i = 0; i < 64 * BN_LENGTH; i++) {
+        if (b.val[0] & 1) {
+            bn_add(res, &a, res);
+        }
+        bn_sll(&a, &a, 1);
+        bn_srl(&b, &b, 1);
+    }
+}
+
 static char *bn2string(bn_t *a)
 {
     char str[64 * BN_LENGTH / 3 + 2];
@@ -112,15 +124,91 @@ static bn_t fib_sequence(long long k)
     return b;
 }
 
-int main(void)
+static bn_t fib_fast_exp(long long k)
 {
+    bn_t M[2][2], f[2];
+
+    bn_init(&M[0][0]);
+    bn_init(&M[0][1]);
+    bn_init(&M[1][0]);
+    bn_init(&M[1][1]);
+    bn_init(&f[0]);
+    bn_init(&f[1]);
+
+    bn_set_with_pos(&M[0][0], 1, 0);
+    bn_set_with_pos(&M[0][1], 1, 0);
+    bn_set_with_pos(&M[1][0], 1, 0);
+    bn_set_with_pos(&f[0], 1, 0);
+
+    while (k) {
+        if (k & 1) {
+            bn_t t[] = {f[0], f[1]};
+            bn_t t1, t2;
+            bn_mul(M[0][0], t[0], &t1);
+            bn_mul(M[0][1], t[1], &t2);
+            bn_add(&t1, &t2, &f[0]);
+            bn_mul(M[1][0], t[0], &t1);
+            bn_mul(M[1][1], t[1], &t2);
+            bn_add(&t1, &t2, &f[1]);
+        }
+
+        bn_t p[][2] = {{M[0][0], M[0][1]}, {M[1][0], M[1][1]}};
+        bn_t t1, t2;
+        bn_mul(p[0][0], p[0][0], &t1);
+        bn_mul(p[0][1], p[1][0], &t2);
+        bn_add(&t1, &t2, &M[0][0]);
+        bn_mul(p[0][0], p[0][1], &t1);
+        bn_mul(p[0][1], p[1][1], &t2);
+        bn_add(&t1, &t2, &M[0][1]);
+        bn_mul(p[1][0], p[0][0], &t1);
+        bn_mul(p[1][1], p[1][0], &t2);
+        bn_add(&t1, &t2, &M[1][0]);
+        bn_mul(p[1][0], p[0][1], &t1);
+        bn_mul(p[1][1], p[1][1], &t2);
+        bn_add(&t1, &t2, &M[1][1]);
+
+        k >>= 1;
+    }
+
+    return f[1];
+}
+
+bn_t fib_fast_doubling(int n)
+{
+    if (!n) {
+        bn_t a;
+        bn_init(&a);
+        return a;
+    }
     bn_t a, b;
     bn_init(&a);
     bn_init(&b);
-    bn_set_with_pos(&a, 1, 1);
     bn_set_with_pos(&b, 1, 0);
-    bn_sub(&a, &b, &a);
-    bn_srl();
+    long long m = 1 << (63 - __builtin_clz(n));
+    while (m) {
+        bn_t t1, t2;
+        bn_t tmp1, tmp2;
+        bn_sll(&b, &tmp1, 1);
+        bn_sub(&tmp1, &a, &tmp1);
+        bn_mul(a, tmp1, &t1);
+        bn_mul(b, b, &tmp1);
+        bn_mul(a, a, &tmp2);
+        bn_add(&tmp1, &tmp2, &t2);
+        a = t1;
+        b = t2;
+        if (n & m) {
+            bn_add(&a, &b, &t1);
+            a = b;
+            b = t1;
+        }
+        m >>= 1;
+    }
+    return a;
+}
+
+int main(void)
+{
+    bn_t a = fib_fast_doubling(1000);
     char *s = bn2string(&a);
     printf("%s\n", s);
     free(s);
