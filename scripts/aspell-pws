@@ -159,3 +159,4 @@ timespec
 timeval
 lkmpg
 vla
+fibdrv

@@ -7,7 +7,10 @@
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/sched.h>
+#include <linux/string.h>
 #include <linux/types.h>
+
+#include "bn.h"
 
 MODULE_LICENSE("Dual MIT/GPL");
 MODULE_AUTHOR("National Cheng Kung University, Taiwan");
@@ -25,40 +28,72 @@ static dev_t fib_dev = 0;
 static struct cdev *fib_cdev;
 static struct class *fib_class;
 static DEFINE_MUTEX(fib_mutex);
-static ssize_t time, time2, time3;
+static ssize_t time1, time2, time3;
 
-static long long fib_sequence(long long k)
+static bn_t fib_sequence(long long k)
 {
-    /* FIXME: C99 variable-length array (VLA) is not allowed in Linux kernel. */
-    long long f[120];
+    bn_t a, b, c;
 
-    f[0] = 0;
-    f[1] = 1;
+    bn_init(&a);
+    bn_init(&b);
 
-    for (int i = 2; i <= k; i++) {
-        f[i] = f[i - 1] + f[i - 2];
+    if (!k) {
+        return a;
     }
 
-    return f[k];
+    bn_set_with_pos(&b, 1, 0);
+
+    for (int i = 2; i <= k; i++) {
+        bn_add(&a, &b, &c);
+        bn_swap(&a, &b);
+        bn_swap(&b, &c);
+    }
+
+    return b;
 }
 
-static long long fib_fast_exp(long long k)
+static bn_t fib_fast_exp(long long k)
 {
-    long long M[][2] = {{1, 1}, {1, 0}};
-    long long f[] = {1, 0};
+    bn_t M[2][2], f[2];
+
+    bn_init(&M[0][0]);
+    bn_init(&M[0][1]);
+    bn_init(&M[1][0]);
+    bn_init(&M[1][1]);
+    bn_init(&f[0]);
+    bn_init(&f[1]);
+
+    bn_set_with_pos(&M[0][0], 1, 0);
+    bn_set_with_pos(&M[0][1], 1, 0);
+    bn_set_with_pos(&M[1][0], 1, 0);
+    bn_set_with_pos(&f[0], 1, 0);
 
     while (k) {
         if (k & 1) {
-            long long t[] = {f[0], f[1]};
-            f[0] = M[0][0] * t[0] + M[0][1] * t[1];
-            f[1] = M[1][0] * t[0] + M[1][1] * t[1];
+            bn_t t[] = {f[0], f[1]};
+            bn_t t1, t2;
+            bn_mul(M[0][0], t[0], &t1);
+            bn_mul(M[0][1], t[1], &t2);
+            bn_add(&t1, &t2, &f[0]);
+            bn_mul(M[1][0], t[0], &t1);
+            bn_mul(M[1][1], t[1], &t2);
+            bn_add(&t1, &t2, &f[1]);
         }
 
-        long long p[][2] = {{M[0][0], M[0][1]}, {M[1][0], M[1][1]}};
-        M[0][0] = p[0][0] * p[0][0] + p[0][1] * p[1][0];
-        M[0][1] = p[0][0] * p[0][1] + p[0][1] * p[1][1];
-        M[1][0] = p[1][0] * p[0][0] + p[1][1] * p[1][0];
-        M[1][1] = p[1][0] * p[0][1] + p[1][1] * p[1][1];
+        bn_t p[][2] = {{M[0][0], M[0][1]}, {M[1][0], M[1][1]}};
+        bn_t t1, t2;
+        bn_mul(p[0][0], p[0][0], &t1);
+        bn_mul(p[0][1], p[1][0], &t2);
+        bn_add(&t1, &t2, &M[0][0]);
+        bn_mul(p[0][0], p[0][1], &t1);
+        bn_mul(p[0][1], p[1][1], &t2);
+        bn_add(&t1, &t2, &M[0][1]);
+        bn_mul(p[1][0], p[0][0], &t1);
+        bn_mul(p[1][1], p[1][0], &t2);
+        bn_add(&t1, &t2, &M[1][0]);
+        bn_mul(p[1][0], p[0][1], &t1);
+        bn_mul(p[1][1], p[1][1], &t2);
+        bn_add(&t1, &t2, &M[1][1]);
 
         k >>= 1;
     }
@@ -66,22 +101,31 @@ static long long fib_fast_exp(long long k)
     return f[1];
 }
 
-long long fib_fast_doubling(int n)
+bn_t fib_fast_doubling(int n)
 {
     if (!n) {
-        return 0;
+        bn_t a;
+        bn_init(&a);
+        return a;
     }
-    long long a = 0;
-    long long b = 1;
+    bn_t a, b;
+    bn_init(&a);
+    bn_init(&b);
+    bn_set_with_pos(&b, 1, 0);
     long long m = 1 << (63 - __builtin_clz(n));
     while (m) {
-        long long t1, t2;
-        t1 = a * (2 * b - a);
-        t2 = b * b + a * a;
+        bn_t t1, t2;
+        bn_t tmp1, tmp2;
+        bn_sll(&b, &tmp1, 1);
+        bn_sub(&tmp1, &a, &tmp1);
+        bn_mul(a, tmp1, &t1);
+        bn_mul(b, b, &tmp1);
+        bn_mul(a, a, &tmp2);
+        bn_add(&tmp1, &tmp2, &t2);
         a = t1;
         b = t2;
         if (n & m) {
-            t1 = a + b;
+            bn_add(&a, &b, &t1);
             a = b;
             b = t1;
         }
@@ -111,19 +155,26 @@ static ssize_t fib_read(struct file *file,
                         size_t size,
                         loff_t *offset)
 {
-    ktime_t kt = ktime_get();
-    ssize_t res1 = fib_sequence(*offset);
-    kt = ktime_sub(ktime_get(), kt);
+    ktime_t kt1 = ktime_get();
+    bn_t res1 = fib_sequence(*offset);
+    kt1 = ktime_sub(ktime_get(), kt1);
     ktime_t kt2 = ktime_get();
-    ssize_t res2 = fib_fast_exp(*offset);
+    bn_t res2 = fib_fast_exp(*offset);
     kt2 = ktime_sub(ktime_get(), kt2);
     ktime_t kt3 = ktime_get();
-    ssize_t res3 = fib_fast_doubling(*offset);
+    bn_t res3 = fib_fast_doubling(*offset);
     kt3 = ktime_sub(ktime_get(), kt3);
-    time = ktime_to_ns(kt);
+    time1 = ktime_to_ns(kt1);
     time2 = ktime_to_ns(kt2);
     time3 = ktime_to_ns(kt3);
-    return (res1 == res2 && res1 == res3) ? res1 : -1;
+    char *s1 = bn2string(&res1);
+    char *s2 = bn2string(&res2);
+    char *s3 = bn2string(&res3);
+    if (copy_to_user(buf, s1, strlen(s1) + 1)) {
+        pr_info("copy_to_user failed\n");
+        return 0;
+    }
+    return (!strcmp(s1, s2) && !strcmp(s2, s3)) ? 1 : 0;
 }
 
 /* write operation is skipped */
@@ -134,7 +185,7 @@ static ssize_t fib_write(struct file *file,
 {
     switch (*offset) {
     case 1:
-        return time;
+        return time1;
     case 2:
         return time2;
     case 3:

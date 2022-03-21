@@ -14,7 +14,7 @@ int main()
 {
     char buf[1];
     // char write_buf[] = "testing writing";
-    int offset = 100; /* TODO: try test something bigger than the limit */
+    int offset = 1000; /* TODO: try test something bigger than the limit */
 
     int fd = open(FIB_DEV, O_RDWR);
     if (fd < 0) {
@@ -46,13 +46,18 @@ int main()
     }
 
     for (int i = 0; i <= offset; i++) {
+        char res[1000];
         long long sz;
         lseek(fd, i, SEEK_SET);
-        sz = read(fd, buf, 1);
-        printf("Reading from " FIB_DEV
-               " at offset %d, returned the sequence "
-               "%lld.\n",
-               i, sz);
+        sz = read(fd, res, sizeof(res));
+        if (sz) {
+            printf("Reading from " FIB_DEV
+                   " at offset %d, returned the sequence "
+                   "%s.\n",
+                   i, res);
+        } else {
+            puts("Wrong answer");
+        }
         lseek(fd, 1, SEEK_SET);
         long long sz1 = write(fd, buf, 1);
         lseek(fd, 2, SEEK_SET);

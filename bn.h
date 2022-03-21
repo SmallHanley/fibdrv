@@ -1,12 +1,13 @@
 #ifndef BN_H
 #define BN_H
 
+#include <linux/slab.h>
 #include <linux/types.h>
 
 #define BN_LENGTH 11
 
 typedef struct {
-    uint64_t val[BN_LENGTH];
+    long unsigned int val[BN_LENGTH];
 } bn_t;
 
 static inline void bn_init(bn_t *a)
@@ -100,7 +101,7 @@ static char *bn2string(bn_t *a)
         i++;
 
     // passing string back
-    char *p = malloc(sizeof(str) - i);
+    char *p = kmalloc(sizeof(str) - i, GFP_KERNEL);
     memcpy(p, str + i, sizeof(str) - i);
 
     return p;
