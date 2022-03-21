@@ -53,6 +53,17 @@ static void bn_add(bn_t *a, bn_t *b, bn_t *res)
     }
 }
 
+static void bn_sub(bn_t *a, bn_t *b, bn_t *res)
+{
+    unsigned c = 0;
+    for (int i = 0; i < BN_LENGTH; i++) {
+        unsigned c1 =
+            __builtin_usubl_overflow(a->val[i], b->val[i], &res->val[i]);
+        unsigned c2 = __builtin_usubl_overflow(res->val[i], c, &res->val[i]);
+        c = c1 | c2;
+    }
+}
+
 static char *bn2string(bn_t *a)
 {
     char str[64 * BN_LENGTH / 3 + 2];
@@ -103,7 +114,15 @@ static bn_t fib_sequence(long long k)
 
 int main(void)
 {
-    bn_t a = fib_sequence(1000);
-    printf("%s\n", bn2string(&a));
+    bn_t a, b;
+    bn_init(&a);
+    bn_init(&b);
+    bn_set_with_pos(&a, 1, 1);
+    bn_set_with_pos(&b, 1, 0);
+    bn_sub(&a, &b, &a);
+    bn_srl();
+    char *s = bn2string(&a);
+    printf("%s\n", s);
+    free(s);
     return 0;
 }
