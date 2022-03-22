@@ -7,7 +7,7 @@
 #define BN_LENGTH 11
 
 typedef struct {
-    long unsigned int val[BN_LENGTH];
+    unsigned long val[BN_LENGTH];
 } bn_t;
 
 static inline void bn_init(bn_t *a)
@@ -15,7 +15,7 @@ static inline void bn_init(bn_t *a)
     memset(a->val, 0, sizeof(uint64_t) * BN_LENGTH);
 }
 
-static inline void bn_set_with_pos(bn_t *a, uint64_t num, unsigned pos)
+static inline void bn_set_with_pos(bn_t *a, unsigned long num, unsigned pos)
 {
     a->val[pos] = num;
 }

@@ -22,7 +22,7 @@ MODULE_VERSION("0.1");
 /* MAX_LENGTH is set to 92 because
  * ssize_t can't fit the number > 92
  */
-#define MAX_LENGTH 100
+#define MAX_LENGTH 1000
 
 static dev_t fib_dev = 0;
 static struct cdev *fib_cdev;
@@ -173,6 +173,9 @@ static ssize_t fib_read(struct file *file,
     if (copy_to_user(buf, s1, strlen(s1) + 1)) {
         pr_info("copy_to_user failed\n");
         return 0;
+    } else {
+        pr_info("procfile read %s\n", file->f_path.dentry->d_name.name);
+        *offset += strlen(s1);
     }
     return (!strcmp(s1, s2) && !strcmp(s2, s3)) ? 1 : 0;
 }
