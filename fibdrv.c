@@ -101,7 +101,7 @@ static bn_t fib_fast_exp(long long k)
     return f[1];
 }
 
-bn_t fib_fast_doubling(int n)
+static bn_t fib_fast_doubling(int n)
 {
     if (!n) {
         bn_t a;
@@ -116,6 +116,10 @@ bn_t fib_fast_doubling(int n)
     while (m) {
         bn_t t1, t2;
         bn_t tmp1, tmp2;
+        bn_init(&t1);
+        bn_init(&t2);
+        bn_init(&tmp1);
+        bn_init(&tmp2);
         bn_sll(&b, &tmp1, 1);
         bn_sub(&tmp1, &a, &tmp1);
         bn_mul(a, tmp1, &t1);
@@ -167,9 +171,9 @@ static ssize_t fib_read(struct file *file,
     time1 = ktime_to_ns(kt1);
     time2 = ktime_to_ns(kt2);
     time3 = ktime_to_ns(kt3);
-    char *s1 = bn2string(&res1);
-    char *s2 = bn2string(&res2);
-    char *s3 = bn2string(&res3);
+    char *s1 = bn2string(res1);
+    char *s2 = bn2string(res2);
+    char *s3 = bn2string(res3);
     if (copy_to_user(buf, s1, strlen(s1) + 1)) {
         pr_info("copy_to_user failed\n");
         return 0;
